@@ -172,17 +172,33 @@ function _musicTick() {
 function startBgMusic() {
   if (_music.playing) return;
   _music.playing = true;
+  if (!_music.timer) _music.timer = setInterval(_musicTick, 200);
   try {
-    _music.until = getAudioCtx().currentTime;
-    _musicTick();
-    _music.timer = setInterval(_musicTick, 200);
+    const ctx = getAudioCtx();
+    _music.until = ctx.currentTime;
+    // Only schedule immediately if the context is already running.
+    // If suspended (mobile before first touch), resumeAudio() will kick
+    // off _musicTick once the context is unlocked by a user gesture.
+    if (ctx.state === 'running') _musicTick();
   } catch(e) {}
 }
 
 function resumeAudio() {
   try {
-    if (_audioCtx && _audioCtx.state === 'suspended') {
-      _audioCtx.resume();
+    // Create the context inside a user-gesture call if it doesn't exist yet —
+    // this is what unlocks audio on iOS Safari and Android Chrome.
+    if (!_audioCtx) {
+      _audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    }
+    if (_audioCtx.state === 'suspended') {
+      _audioCtx.resume().then(() => {
+        // Reset the music scheduler to current time so it starts fresh
+        // rather than trying to catch up from a stale timeline.
+        if (_music.playing) {
+          _music.until = _audioCtx.currentTime;
+          _musicTick();
+        }
+      });
     }
   } catch(e) {}
 }
