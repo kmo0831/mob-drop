@@ -36,10 +36,11 @@ class Villager {
     const py = player.y + player.height / 2;
     const dist = Math.sqrt((cx - px) ** 2 + (cy - py) ** 2);
 
-    const inRange   = dist < RESCUE_RANGE;
-    const holdingE  = keys['e'] || keys['E'];
+    const inRange      = dist < RESCUE_RANGE;
+    const holdingE     = keys['e'] || keys['E'];
+    const touchHolding = touch.villagerTarget === this;
 
-    if (inRange && holdingE && !player.tookDamageThisFrame) {
+    if (inRange && (holdingE || touchHolding) && !player.tookDamageThisFrame) {
       this.rescueProgress++;
       if (this.rescueProgress >= RESCUE_FRAMES) {
         this.rescued = true;

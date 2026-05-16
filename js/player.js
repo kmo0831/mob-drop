@@ -43,12 +43,13 @@ class Player {
     return this.currentWeapon.shoot(cx, cy, targetX, targetY);
   }
 
-  update(canvasWidth, canvasHeight, obstacles) {
+  // touchMoveTarget: {x, y} canvas-space point to walk toward (null if no touch movement)
+  update(canvasWidth, canvasHeight, obstacles, touchMoveTarget) {
     this.tookDamageThisFrame = false;
     if (this.invincibleTimer > 0) this.invincibleTimer--;
     if (this.fireTimer > 0) this.fireTimer--;
 
-    // weapon switching [1] [2] etc.
+    // keyboard weapon switching [1] [2] etc.
     for (let i = 0; i < this.unlockedWeapons.length; i++) {
       if (keys[String(i + 1)]) this.currentWeaponIdx = i;
     }
@@ -59,6 +60,19 @@ class Player {
     if (keys['s'] || keys['S'] || keys['ArrowDown'])  dy += 1;
     if (keys['a'] || keys['A'] || keys['ArrowLeft'])  dx -= 1;
     if (keys['d'] || keys['D'] || keys['ArrowRight']) dx += 1;
+
+    // touch movement: only when no keyboard direction is held
+    if (dx === 0 && dy === 0 && touchMoveTarget) {
+      const cx  = this.x + this.width  / 2;
+      const cy  = this.y + this.height / 2;
+      const tdx = touchMoveTarget.x - cx;
+      const tdy = touchMoveTarget.y - cy;
+      const len = Math.sqrt(tdx * tdx + tdy * tdy);
+      if (len > 8) { // small deadzone to stop jitter when nearly on target
+        dx = tdx / len;
+        dy = tdy / len;
+      }
+    }
 
     if (dx !== 0 && dy !== 0) {
       const len = Math.sqrt(dx * dx + dy * dy);

@@ -2,6 +2,7 @@
   margin: 0;
   padding: 0;
   box-sizing: border-box;
+  touch-action: none;
 }
 
 body {
@@ -9,6 +10,7 @@ body {
   display: flex;
   justify-content: center;
   align-items: center;
+  width: 100vw;
   height: 100vh;
   overflow: hidden;
 }
@@ -16,4 +18,8 @@ body {
 #gameCanvas {
   display: block;
   background: #000;
+  max-width: 100vw;
+  max-height: 100vh;
+  width: auto;
+  height: auto;
 }
