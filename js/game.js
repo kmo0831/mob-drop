@@ -2,13 +2,15 @@ const canvas = document.getElementById('gameCanvas');
 const ctx    = canvas.getContext('2d');
 
 const TOTAL_VILLAGERS = 5;
-const TOUCH_HIT_PAD   = 20; // extra px added to each side for finger tap targets
+const TOUCH_HIT_PAD   = 20;
 
-let gameState    = 'intro';
+let gameState    = 'title'; // starts on title screen
 let introTimer   = 0;
+let creditsTimer = 0;
 let currentLevel = 1;
 
-let player, enemies, bullets, arrows, villagers, chests, currentConfig;
+// Initialised as empty so draw() is safe before the first initLevel call
+let player = null, enemies = [], bullets = [], arrows = [], villagers = [], chests = [], currentConfig = null;
 
 // Weapon switcher button rect — set each draw frame, read at start of next update
 let _weaponBtnRect = null;
@@ -42,7 +44,7 @@ function generateEnemies(config) {
 function initLevel(levelNum, prevPlayer) {
   currentLevel  = levelNum;
   gameState     = 'intro';
-  introTimer    = 150;
+  introTimer    = 120; // 2 seconds at 60 fps
   startBgMusic();
   currentConfig = LEVEL_CONFIGS[levelNum - 1];
 
@@ -75,7 +77,7 @@ function initLevel(levelNum, prevPlayer) {
   }
 }
 
-initLevel(1);
+// Title screen comes first — initLevel(1) is called when Play is tapped
 
 function savedCount() {
   return villagers.filter(v => v.rescued).length;
@@ -88,11 +90,25 @@ function hitButton(btn) {
 }
 
 function update() {
-  if (gameState === 'intro') {
-    introTimer--;
-    if (introTimer <= 0) gameState = 'playing';
+  // Title and credits are handled entirely in draw() via hitButton
+  if (gameState === 'title') return;
+
+  if (gameState === 'credits') {
+    creditsTimer++;
     return;
   }
+
+  if (gameState === 'intro') {
+    introTimer--;
+    // Dismissable: any tap or click skips the remaining intro time
+    if (introTimer <= 0 || mouse.justClicked || touch.justTapped) {
+      gameState         = 'playing';
+      mouse.justClicked = false;
+      touch.justTapped  = false;
+    }
+    return;
+  }
+
   if (gameState !== 'playing') return;
 
   // --- Touch intent resolution ---
@@ -103,7 +119,7 @@ function update() {
     if (_weaponBtnRect && pointInRect(touch.tapX, touch.tapY, _weaponBtnRect)) {
       player.currentWeaponIdx = (player.currentWeaponIdx + 1) % player.unlockedWeapons.length;
       touch.justTapped  = false;
-      mouse.justClicked = false; // prevent hitButton in draw() from double-cycling
+      mouse.justClicked = false;
 
     // 2. Tap on enemy → one shot at that enemy
     } else {
@@ -118,7 +134,6 @@ function update() {
       }
 
       if (hitEnemy) {
-        // Fire one shot — bypass mouse.down check used by tryShoot
         if (player.ammo > 0 && player.fireTimer <= 0) {
           player.ammo--;
           player.fireTimer = player.currentWeapon.fireRate;
@@ -154,13 +169,12 @@ function update() {
       }
     }
   } else if (touch.active) {
-    // Sustained drag → keep moving toward current touch position
     touchMoveTarget = { x: touch.x, y: touch.y };
   }
 
   player.update(canvas.width, canvas.height, obstacles, touchMoveTarget);
 
-  // Desktop mouse shooting (hold to fire — not triggered by touch events)
+  // Desktop mouse shooting
   const newBullets = player.tryShoot(mouse.x, mouse.y);
   if (newBullets.length > 0) playShoot();
   bullets.push(...newBullets);
@@ -188,14 +202,45 @@ function update() {
   if (player.hp <= 0) {
     gameState = 'gameOver';
   } else if (savedCount() === TOTAL_VILLAGERS) {
-    gameState = currentLevel < 10 ? 'levelComplete' : 'youWin';
+    if (currentLevel < 10) {
+      gameState = 'levelComplete';
+    } else {
+      gameState    = 'credits';
+      creditsTimer = 0;
+    }
     playLevelComplete();
   }
 }
 
 function draw() {
+  const cw = canvas.width;
+  const ch = canvas.height;
+
+  // Title screen — drawn before initLevel, no game entities exist yet
+  if (gameState === 'title') {
+    ctx.fillStyle = '#000';
+    ctx.fillRect(0, 0, cw, ch);
+    const btn = drawTitleScreen(ctx, cw, ch);
+    if (hitButton(btn)) {
+      initLevel(1);
+      mouse.justClicked = false;
+      touch.justTapped  = false;
+    }
+    return;
+  }
+
+  // Credits screen
+  if (gameState === 'credits') {
+    ctx.fillStyle = '#000';
+    ctx.fillRect(0, 0, cw, ch);
+    const btn = drawCreditsScreen(ctx, cw, ch, creditsTimer);
+    if (btn && hitButton(btn)) initLevel(1);
+    return;
+  }
+
+  // In-game rendering
   ctx.fillStyle = currentConfig ? currentConfig.bg : '#000';
-  ctx.fillRect(0, 0, canvas.width, canvas.height);
+  ctx.fillRect(0, 0, cw, ch);
 
   for (const obs of obstacles) drawObstacle(ctx, obs);
 
@@ -211,25 +256,25 @@ function draw() {
   // Weapon switcher — always visible during gameplay; store rect for next update()
   if (gameState === 'playing' || gameState === 'intro') {
     _weaponBtnRect = drawWeaponSwitcher(ctx, player);
-    // Mouse click on weapon button (desktop)
     if (hitButton(_weaponBtnRect)) {
       player.currentWeaponIdx = (player.currentWeaponIdx + 1) % player.unlockedWeapons.length;
     }
   }
 
   if (gameState === 'intro') {
-    drawLevelIntro(ctx, currentLevel, currentConfig.theme, introTimer, canvas.width, canvas.height);
+    drawLevelIntro(ctx, currentLevel, currentConfig.theme, introTimer, cw, ch);
   }
 
   let btn;
   if (gameState === 'levelComplete') {
-    btn = drawLevelComplete(ctx, player.hp, currentLevel, canvas.width, canvas.height);
+    btn = drawLevelComplete(ctx, player.hp, currentLevel, cw, ch);
     if (hitButton(btn)) initLevel(currentLevel + 1, player);
   } else if (gameState === 'gameOver') {
-    btn = drawGameOver(ctx, canvas.width, canvas.height);
+    btn = drawGameOver(ctx, cw, ch);
     if (hitButton(btn)) initLevel(currentLevel, player);
   } else if (gameState === 'youWin') {
-    btn = drawYouWin(ctx, canvas.width, canvas.height);
+    // kept for safety — this state is no longer reached (level 10 → 'credits')
+    btn = drawYouWin(ctx, cw, ch);
     if (hitButton(btn)) initLevel(1);
   }
 }

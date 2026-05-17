@@ -1,3 +1,5 @@
+const isMobile = ('ontouchstart' in window) || navigator.maxTouchPoints > 0;
+
 const keys = {};
 const mouse = { x: 0, y: 0, down: false, justClicked: false };
 const touch = { active: false, x: 0, y: 0, justTapped: false, tapX: 0, tapY: 0, villagerTarget: null };

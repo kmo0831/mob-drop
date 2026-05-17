@@ -183,17 +183,25 @@ function startBgMusic() {
   } catch(e) {}
 }
 
+let _audioUnlocked = false;
+
 function resumeAudio() {
   try {
-    // Create the context inside a user-gesture call if it doesn't exist yet —
-    // this is what unlocks audio on iOS Safari and Android Chrome.
     if (!_audioCtx) {
       _audioCtx = new (window.AudioContext || window.webkitAudioContext)();
     }
+    // Silent 1-sample buffer — required by older iOS Safari to unlock the audio pipeline.
+    // Must be played inside a user-gesture handler to take effect.
+    if (!_audioUnlocked) {
+      _audioUnlocked = true;
+      const buf = _audioCtx.createBuffer(1, 1, 22050);
+      const src = _audioCtx.createBufferSource();
+      src.buffer = buf;
+      src.connect(_audioCtx.destination);
+      src.start(0);
+    }
     if (_audioCtx.state === 'suspended') {
       _audioCtx.resume().then(() => {
-        // Reset the music scheduler to current time so it starts fresh
-        // rather than trying to catch up from a stale timeline.
         if (_music.playing) {
           _music.until = _audioCtx.currentTime;
           _musicTick();
@@ -202,3 +210,10 @@ function resumeAudio() {
     }
   } catch(e) {}
 }
+
+// Auto-resume when the tab comes back to foreground (e.g. after iOS lock screen)
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState === 'visible' && _audioCtx && _audioCtx.state === 'suspended') {
+    _audioCtx.resume().catch(() => {});
+  }
+});
