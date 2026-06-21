@@ -284,6 +284,8 @@ function loop() {
   draw();
   mouse.justClicked = false;
   touch.justTapped  = false;
+  justPressedKeys['e'] = false;
+  justPressedKeys['E'] = false;
   requestAnimationFrame(loop);
 }
 

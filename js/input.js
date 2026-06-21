@@ -1,6 +1,7 @@
 const isMobile = ('ontouchstart' in window) || navigator.maxTouchPoints > 0;
 
 const keys = {};
+const justPressedKeys = {};
 const mouse = { x: 0, y: 0, down: false, justClicked: false };
 const touch = { active: false, x: 0, y: 0, justTapped: false, tapX: 0, tapY: 0, villagerTarget: null };
 
@@ -13,8 +14,15 @@ function canvasCoords(clientX, clientY) {
   };
 }
 
-window.addEventListener('keydown', e => { keys[e.key] = true;  resumeAudio(); });
-window.addEventListener('keyup',   e => { keys[e.key] = false; });
+window.addEventListener('keydown', e => {
+  if (!keys[e.key]) justPressedKeys[e.key] = true;
+  keys[e.key] = true;
+  resumeAudio();
+});
+window.addEventListener('keyup', e => {
+  keys[e.key] = false;
+  justPressedKeys[e.key] = false;
+});
 
 window.addEventListener('mousemove', e => {
   const p = canvasCoords(e.clientX, e.clientY);

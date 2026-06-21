@@ -8,6 +8,8 @@ class Villager {
     this.color  = '#f5a623';
     this.rescued = false;
     this.rescueProgress = 0;
+    this.keyboardRescueActive = false;
+    this.playerInRange = false;
 
     // place randomly, retrying until clear of obstacles
     let placed = false;
@@ -36,11 +38,20 @@ class Villager {
     const py = player.y + player.height / 2;
     const dist = Math.sqrt((cx - px) ** 2 + (cy - py) ** 2);
 
-    const inRange      = dist < RESCUE_RANGE;
-    const holdingE     = keys['e'] || keys['E'];
-    const touchHolding = touch.villagerTarget === this;
+    const inRange       = dist < RESCUE_RANGE;
+    const holdingE      = keys['e'] || keys['E'];
+    const justPressedE  = justPressedKeys['e'] || justPressedKeys['E'];
+    const touchHolding  = touch.villagerTarget === this;
 
-    if (inRange && (holdingE || touchHolding) && !player.tookDamageThisFrame) {
+    this.playerInRange = inRange;
+
+    if (!inRange || !holdingE) {
+      this.keyboardRescueActive = false;
+    } else if (justPressedE && inRange) {
+      this.keyboardRescueActive = true;
+    }
+
+    if (inRange && (this.keyboardRescueActive || touchHolding) && !player.tookDamageThisFrame) {
       this.rescueProgress++;
       if (this.rescueProgress >= RESCUE_FRAMES) {
         this.rescued = true;
@@ -69,8 +80,8 @@ class Villager {
       ctx.strokeStyle = '#fff';
       ctx.lineWidth = 1;
       ctx.strokeRect(barX, barY, barW, 6);
-    } else {
-      // small "E" hint when player is close
+    } else if (this.playerInRange) {
+      // small "E" hint when player is close enough to rescue
       ctx.fillStyle = '#fff';
       ctx.font = '11px monospace';
       ctx.textAlign = 'center';
