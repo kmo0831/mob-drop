@@ -54,7 +54,7 @@ During gameplay, the player:
 - collects chests, including ammo and weapon unlocks
 - progresses by rescuing all villagers in the current level
 
-Level progression is driven by configuration data, and each level appears to vary in theme, enemy composition, and rewards. This suggests the project is designed to scale through content variation rather than through major rules changes between levels.
+Level progression is driven by configuration data, and each level appears to vary in theme, enemy composition, and rewards. Enemy difficulty also scales numerically by level through configuration multipliers, including increasing enemy speed and health in later stages. This suggests the project is designed to scale through content variation and parameter tuning rather than through major rules changes between levels.
 
 ## Core Architecture
 
@@ -103,7 +103,7 @@ Movement supports both keyboard input and touch-based movement targeting.
 
 ### Enemy System
 
-The enemy system appears to support multiple enemy classes with differing behavior. Enemies are spawned per level according to configuration, and some can produce projectiles. Enemy difficulty is adjusted through per-level multipliers such as speed and health.
+The enemy system appears to support multiple enemy classes with differing behavior. Enemies are spawned per level according to configuration, and some can produce projectiles. Enemy difficulty is adjusted through per-level multipliers such as speed and health. Based on the level configuration and spawn logic, enemies become progressively faster across levels, with speed multipliers increasing from 1.00 in early levels up to 1.50 by level 10.
 
 ### Villager System
 
